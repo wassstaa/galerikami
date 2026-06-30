@@ -7,7 +7,7 @@ const SHOTS_NEEDED = 4
 const COUNTDOWN_SECONDS = 3
 
 export default function Photobooth() {
-  const { videoRef, status, errorMsg, start, flip } = useCamera()
+  const { videoRef, status, errorMsg, start, flip, diagnostics } = useCamera()
   const [filterId, setFilterId] = useState('normal')
   const [themeId, setThemeId] = useState('classic-black')
   const [shots, setShots] = useState([])
@@ -20,7 +20,6 @@ export default function Photobooth() {
 
   useEffect(() => {
     if (status === 'idle') start()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const takeOneShot = () =>
@@ -45,12 +44,9 @@ export default function Photobooth() {
     setIsCapturing(true)
     const results = []
     for (let i = 0; i < SHOTS_NEEDED; i++) {
-      // jeda sebentar antar foto
-      // eslint-disable-next-line no-await-in-loop
       const shot = await takeOneShot()
       results.push(shot)
       setShots([...results])
-      // eslint-disable-next-line no-await-in-loop
       await new Promise((r) => setTimeout(r, 600))
     }
     setIsCapturing(false)
@@ -79,7 +75,6 @@ export default function Photobooth() {
     ctx.strokeRect(3, 3, stripWidth - 6, totalH - 6)
 
     for (let i = 0; i < shots.length; i++) {
-      // eslint-disable-next-line no-await-in-loop
       const img = await loadImage(shots[i])
       const y = padding + i * (photoHeight + gap)
       const x = padding
@@ -124,13 +119,11 @@ export default function Photobooth() {
               ref={videoRef}
               playsInline
               muted
-              autoPlay
               style={{
                 width: '100%',
                 height: '100%',
                 objectFit: 'cover',
                 transform: 'scaleX(-1)',
-                filter: filter.css,
               }}
             />
             {countdown !== null && (
@@ -153,6 +146,22 @@ export default function Photobooth() {
             )}
           </div>
 
+          <pre
+            style={{
+              width: '100%',
+              maxWidth: 420,
+              background: '#1a1a1a',
+              color: '#9eff9e',
+              fontSize: '0.75rem',
+              padding: 10,
+              borderRadius: 8,
+              overflowX: 'auto',
+              fontFamily: 'monospace',
+            }}
+          >
+            {JSON.stringify(diagnostics, null, 2)}
+          </pre>
+
           <button
             onClick={flip}
             style={{
@@ -168,7 +177,6 @@ export default function Photobooth() {
             balik kamera
           </button>
 
-          {/* Pilihan filter warna */}
           <div style={{ width: '100%', maxWidth: 420 }}>
             <p style={{ fontFamily: 'var(--font-caption)', fontSize: '1.3rem', margin: '0 0 8px' }}>Filter warna</p>
             <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
@@ -193,7 +201,6 @@ export default function Photobooth() {
             </div>
           </div>
 
-          {/* Pilihan tema kertas */}
           <div style={{ width: '100%', maxWidth: 420 }}>
             <p style={{ fontFamily: 'var(--font-caption)', fontSize: '1.3rem', margin: '0 0 8px' }}>Tema kertas</p>
             <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
@@ -269,7 +276,6 @@ export default function Photobooth() {
             </div>
           )}
 
-          {/* Preview strip */}
           {shots.length > 0 && (
             <div
               ref={stripRef}
@@ -336,4 +342,4 @@ function drawCover(ctx, img, x, y, w, h) {
     sy = (img.height - sh) / 2
   }
   ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h)
-}
+        }
