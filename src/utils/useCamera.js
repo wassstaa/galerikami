@@ -1,17 +1,63 @@
 // utils/useCamera.js
 import { useRef, useState, useCallback, useEffect } from 'react'
 
-/**
- * Hook untuk meminta izin kamera dan mengelola stream <video>.
- * Mendukung Chrome desktop, Android Chrome, dan Safari iOS
- * (memakai playsInline + muted agar autoplay diizinkan di iOS).
- */
 export function useCamera() {
   const videoRef = useRef(null)
   const streamRef = useRef(null)
-  const [status, setStatus] = useState('idle') // idle | requesting | granted | denied | error
+  const [status, setStatus] = useState('idle')
   const [errorMsg, setErrorMsg] = useState('')
   const [facingMode, setFacingMode] = useState('user')
+  const [diagnostics, setDiagnostics] = useState({})
+
+  const refreshDiagnostics = useCallback(() => {
+    const video = videoRef.current
+    const stream = streamRef.current
+    if (!video) {
+      setDiagnostics({ note: 'video element belum ada' })
+      return
+    }
+    const track = stream ? stream.getVideoTracks()[0] : null
+    setDiagnostics({
+      videoWidth: video.videoWidth,
+      videoHeight: video.videoHeight,
+      readyState: video.readyState,
+      paused: video.paused,
+      currentTime: Math.round(video.currentTime * 10) / 10,
+      hasSrcObject: !!video.srcObject,
+      trackState: track ? track.readyState : 'tidak ada',
+      trackEnabled: track ? track.enabled : null,
+      trackMuted: track ? track.muted : null,
+      trackLabel: track ? track.label : null,
+    })
+  }, [])
+
+  const attachStream = useCallback((stream) => {
+    const video = videoRef.current
+    if (!video) return
+    video.muted = true
+    video.playsInline = true
+    video.srcObject = stream
+    const tryPlay = () => {
+      const p = video.play()
+      if (p && typeof p.catch === 'function') {
+        p.catch(() => {})
+      }
+      refreshDiagnostics()
+    }
+    tryPlay()
+    video.onloadedmetadata = () => {
+      tryPlay()
+    }
+    video.onplaying = () => {
+      refreshDiagnostics()
+    }
+    let count = 0
+    const interval = setInterval(() => {
+      refreshDiagnostics()
+      count += 1
+      if (count > 20) clearInterval(interval)
+    }, 300)
+  }, [refreshDiagnostics])
 
   const start = useCallback(async (mode = facingMode) => {
     setStatus('requesting')
@@ -20,7 +66,6 @@ export function useCamera() {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('Browser ini tidak mendukung akses kamera.')
       }
-      // hentikan stream lama kalau ada
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop())
       }
@@ -33,10 +78,7 @@ export function useCamera() {
         audio: false,
       })
       streamRef.current = stream
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        await videoRef.current.play()
-      }
+      attachStream(stream)
       setFacingMode(mode)
       setStatus('granted')
     } catch (err) {
@@ -47,7 +89,13 @@ export function useCamera() {
           : err.message || 'Tidak bisa mengakses kamera.'
       )
     }
-  }, [facingMode])
+  }, [facingMode, attachStream])
+
+  useEffect(() => {
+    if (status === 'granted' && streamRef.current && videoRef.current && !videoRef.current.srcObject) {
+      attachStream(streamRef.current)
+    }
+  }, [status, attachStream])
 
   const stop = useCallback(() => {
     if (streamRef.current) {
@@ -65,13 +113,9 @@ export function useCamera() {
     return () => stop()
   }, [stop])
 
-  return { videoRef, status, errorMsg, start, stop, flip, facingMode }
+  return { videoRef, status, errorMsg, start, stop, flip, facingMode, diagnostics }
 }
 
-/**
- * Mengambil satu frame dari elemen video menjadi data URL (PNG),
- * dengan opsi mirror (selfie) dan filter CSS.
- */
 export function captureFrame(videoEl, { mirror = true, filterCss = 'none' } = {}) {
   const canvas = document.createElement('canvas')
   const w = videoEl.videoWidth
@@ -86,4 +130,4 @@ export function captureFrame(videoEl, { mirror = true, filterCss = 'none' } = {}
   }
   ctx.drawImage(videoEl, 0, 0, w, h)
   return canvas.toDataURL('image/png')
-}
+        }
