@@ -4,7 +4,7 @@
 // karena ia merebut srcObject video → menyebabkan layar hitam di BlurMode.
 // Sebagai gantinya kita pakai loop requestAnimationFrame manual.
 
-import { Hands } from '@mediapipe/hands'
+import * as mpHands from '@mediapipe/hands'
 
 function isFingerUp(lm, tip, pip) {
   return lm[tip].y < lm[pip].y
@@ -23,7 +23,7 @@ export function isPeaceSign(lm) {
 }
 
 export function createHandDetector(videoEl, onResult) {
-  const hands = new Hands({
+  const hands = new mpHands.Hands({
     locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
   })
 
