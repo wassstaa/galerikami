@@ -51,8 +51,8 @@ export function createHandDetector(videoEl, onResult) {
       busy = true
       try {
         await hands.send({ image: videoEl })
-      } catch (_) {
-        // ignore frame errors
+      } catch (e) {
+  console.error("MediaPipe Error:", e)
       }
       busy = false
     }
